@@ -1,5 +1,4 @@
 // components/table/data-table-toolbar.tsx
-// (unchanged, but for completeness)
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
@@ -17,10 +16,12 @@ export function DataTableToolbar<TData>({
                                             table,
                                             globalFilter,
                                             setGlobalFilter,
+                                            onAddClick,
                                         }: {
     table: ReactTable<TData>;
     globalFilter: string;
     setGlobalFilter: React.Dispatch<React.SetStateAction<string>>;
+    onAddClick: () => void;
 }) {
     return (
         <div className="flex items-center justify-between px-4 lg:px-6 mb-4">
@@ -63,7 +64,7 @@ export function DataTableToolbar<TData>({
                             })}
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={onAddClick}>
                     <IconPlus />
                     <span className="hidden lg:inline">Add User</span>
                 </Button>

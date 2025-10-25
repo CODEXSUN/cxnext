@@ -8,6 +8,7 @@ import Loader from "@/components/loader/loader";
 import {SidebarInset, SidebarProvider} from "@/components/ui/sidebar";
 import {AppSidebar} from "@/components/menu/sidebar/app-sidebar";
 import {SiteHeader} from "@/components/menu/sidebar/site-header"
+import { Toaster } from "@/components/ui/sonner"
 
 
 export default function ProtectedLayout({children}: { children: React.ReactNode }) {
@@ -44,6 +45,7 @@ export default function ProtectedLayout({children}: { children: React.ReactNode 
                     <main className="flex-1 px-3 overflow-auto">
                         {children}
                     </main>
+                    <Toaster />
                 </SidebarInset>
             </SidebarProvider>
         </>
