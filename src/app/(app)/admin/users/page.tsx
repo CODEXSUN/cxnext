@@ -3,8 +3,8 @@
 
 import { useState, useMemo } from 'react';
 import axios from 'axios';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { Loader } from "@/components/loader/loader";
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Loader } from "@/components/loader/loader"; // Assuming this is a spinner component
 
 import {
     ColumnDef,
@@ -19,23 +19,27 @@ import {
     SortingState,
     useReactTable,
     VisibilityState,
-} from "@tanstack/react-table"
+} from "@tanstack/react-table";
 
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { DataTableToolbar } from "@/components/table/data-table-toolbar"
-import { DataTable } from "@/components/table/data-table"
-import { DataTablePagination } from "@/components/table/data-table-pagination"
-import { DataTableColumnHeader } from "@/components/table/data-table-column-header"
-import { IconDotsVertical } from "@tabler/icons-react"
+} from "@/components/ui/dropdown-menu";
+import { DataTableToolbar } from "@/components/table/data-table-toolbar";
+import { DataTable } from "@/components/table/data-table";
+import { DataTablePagination } from "@/components/table/data-table-pagination";
+import { DataTableColumnHeader } from "@/components/table/data-table-column-header";
+import { IconDotsVertical } from "@tabler/icons-react";
+import { Toaster } from "@/components/ui/toaster";
+import UserDialog from './user-dialog';
+import DeleteUserDialog from './delete-user-dialog';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const queryClient = new QueryClient();
 
@@ -89,17 +93,17 @@ const columns: ColumnDef<User>[] = [
         cell: ({ row }) => <div>{row.original.email}</div>,
     },
     {
-        accessorKey: "roles",
-        header: "Roles",
-        cell: ({ row }) => (
-            <div className="flex flex-wrap gap-1">
-                {row.original.roles?.map(role => (
-                    <Badge key={role.id} variant="outline" className="text-muted-foreground px-1.5">
-                        {role.name}
-                    </Badge>
-                )) ?? null}
-            </div>
+        id: "roles",
+        accessorFn: (row) => row.roles?.[0]?.name ?? '',
+        header: ({ column }) => (
+            <DataTableColumnHeader column={column} title="Role" />
         ),
+        cell: ({ row }) => (
+            <Badge variant="outline" className="text-muted-foreground px-1.5">
+                {row.original.roles?.[0]?.name ?? ''}
+            </Badge>
+        ),
+        enableSorting: false,
     },
     {
         accessorKey: "active",
@@ -114,7 +118,7 @@ const columns: ColumnDef<User>[] = [
     },
     {
         id: "actions",
-        cell: () => (
+        cell: ({ row, table }) => (
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button
@@ -127,14 +131,14 @@ const columns: ColumnDef<User>[] = [
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-32">
-                    <DropdownMenuItem>Edit</DropdownMenuItem>
-                    <DropdownMenuItem>Make a copy</DropdownMenuItem>
-                    <DropdownMenuItem>Favorite</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => (table.options.meta as any)?.onEdit(row.original)}>Edit</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+                    <DropdownMenuItem variant="destructive" onClick={() => (table.options.meta as any)?.onDelete(row.original)}>Delete</DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         ),
+        enableSorting: false,
+        enableHiding: false,
     },
 ];
 
@@ -143,17 +147,34 @@ function UsersPageContent() {
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [globalFilter, setGlobalFilter] = useState('');
+    const debouncedGlobalFilter = useDebounce(globalFilter, 500); // Debounce search to prevent server calls on every keystroke
     const [sorting, setSorting] = useState<SortingState>([]);
     const [pagination, setPagination] = useState({
         pageIndex: 0,
         pageSize: 10,
     });
+    const [addOpen, setAddOpen] = useState(false);
+    const [editUser, setEditUser] = useState<User | null>(null);
+    const [deleteUser, setDeleteUser] = useState<User | null>(null);
+    const [dialogQueryKey, setDialogQueryKey] = useState<any[]>([]);
+
+    const queryKey = useMemo(
+        () => [
+            'users',
+            debouncedGlobalFilter, // Use debounced value for query key
+            JSON.stringify(sorting),
+            JSON.stringify(columnFilters),
+            pagination.pageIndex,
+            pagination.pageSize,
+        ],
+        [debouncedGlobalFilter, sorting, columnFilters, pagination]
+    );
 
     const fetchUsers = async () => {
         const sortBy = sorting[0]?.id || 'id';
         const sortDir = sorting[0]?.desc ? 'desc' : 'asc';
         let params: any = {
-            search: globalFilter,
+            search: debouncedGlobalFilter, // Use debounced value for server params
             sort_by: sortBy,
             sort_dir: sortDir,
             page: pagination.pageIndex + 1,
@@ -169,12 +190,13 @@ function UsersPageContent() {
         return response.data;
     };
 
-    const { data, isLoading, error } = useQuery({
-        queryKey: ['users', globalFilter, JSON.stringify(sorting), JSON.stringify(columnFilters), pagination.pageIndex, pagination.pageSize],
+    const { data, isLoading, isFetching, error } = useQuery({
+        queryKey,
         queryFn: fetchUsers,
+        keepPreviousData: true, // Optimization: Keep previous data while fetching new
     });
 
-    const users = useMemo(() => data?.data || [], [data]);
+    const users = useMemo(() => [...(data?.data || [])], [data]);
     const pageCount = useMemo(() => data?.meta?.last_page || 0, [data]);
 
     const table = useReactTable({
@@ -205,6 +227,16 @@ function UsersPageContent() {
         getSortedRowModel: getSortedRowModel(),
         getFacetedRowModel: getFacetedRowModel(),
         getFacetedUniqueValues: getFacetedUniqueValues(),
+        meta: {
+            onEdit: (user: User) => {
+                setEditUser(user);
+                setDialogQueryKey(queryKey);
+            },
+            onDelete: (user: User) => {
+                setDeleteUser(user);
+                setDialogQueryKey(queryKey);
+            },
+        },
     });
 
     if (isLoading) return <Loader />;
@@ -212,15 +244,49 @@ function UsersPageContent() {
 
     return (
         <div className="container mx-auto p-4">
-            <h1 className="text-2xl font-bold mb-4">ERP Users Management</h1>
+            {isFetching && <Loader />}
+            <h1 className="text-2xl font-bold mb-4">Users Management</h1>
 
-            <DataTableToolbar table={table} globalFilter={globalFilter} setGlobalFilter={setGlobalFilter} />
+            <DataTableToolbar
+                table={table}
+                globalFilter={globalFilter}
+                setGlobalFilter={setGlobalFilter}
+                onAddClick={() => {
+                    setAddOpen(true);
+                    setDialogQueryKey(queryKey);
+                }}
+            />
 
             <div className="overflow-hidden rounded-lg border">
                 <DataTable table={table} />
             </div>
 
             <DataTablePagination table={table} />
+
+            <UserDialog
+                currentRow={editUser ?? undefined}
+                open={addOpen || !!editUser}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setAddOpen(false);
+                        setEditUser(null);
+                    }
+                }}
+                dialogQueryKey={dialogQueryKey}
+            />
+            {deleteUser && (
+                <DeleteUserDialog
+                    currentRow={deleteUser}
+                    open={!!deleteUser}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setDeleteUser(null);
+                        }
+                    }}
+                    dialogQueryKey={dialogQueryKey}
+                />
+            )}
+            <Toaster />
         </div>
     );
 }

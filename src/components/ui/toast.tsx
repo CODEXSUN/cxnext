@@ -36,6 +36,10 @@ const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
 )
 Toast.displayName = "Toast"
 
+const ToastProvider = ({ children }: { children: React.ReactNode }) => {
+    return <>{children}</>
+}
+
 const ToastViewport = React.forwardRef<
     HTMLOListElement,
     React.HTMLAttributes<HTMLOListElement>
@@ -112,6 +116,7 @@ type ToastActionElement = React.ReactElement<typeof ToastAction>
 
 export {
     toastVariants,
+    ToastProvider,
     Toast,
     ToastViewport,
     ToastClose,
