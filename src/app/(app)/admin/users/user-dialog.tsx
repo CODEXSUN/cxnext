@@ -1,8 +1,8 @@
 // components/user-dialog.tsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/toaser/use-toast';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -65,25 +65,26 @@ const formSchema = z
         confirmPassword: z.string().transform((pwd) => pwd.trim()),
         active: z.boolean(),
         isEdit: z.boolean(),
+        changePassword: z.boolean().optional(),
     })
     .refine(
-        ({ isEdit, password }) => (isEdit && !password ? true : password.length > 0),
+        ({ isEdit, password, changePassword }) => (isEdit && !changePassword ? true : password.length > 0),
         { message: 'Password is required.', path: ['password'] }
     )
     .refine(
-        ({ isEdit, password }) => (isEdit && !password ? true : password.length >= 8),
+        ({ isEdit, password, changePassword }) => (isEdit && !changePassword ? true : password.length >= 8),
         { message: 'Password must be at least 8 characters long.', path: ['password'] }
     )
     .refine(
-        ({ isEdit, password }) => (isEdit && !password ? true : /[a-z]/.test(password)),
+        ({ isEdit, password, changePassword }) => (isEdit && !changePassword ? true : /[a-z]/.test(password)),
         { message: 'Password must contain at least one lowercase letter.', path: ['password'] }
     )
     .refine(
-        ({ isEdit, password }) => (isEdit && !password ? true : /\d/.test(password)),
+        ({ isEdit, password, changePassword }) => (isEdit && !changePassword ? true : /\d/.test(password)),
         { message: 'Password must contain at least one number.', path: ['password'] }
     )
     .refine(
-        ({ isEdit, password, confirmPassword }) => (isEdit && !password ? true : password === confirmPassword),
+        ({ isEdit, password, confirmPassword, changePassword }) => (isEdit && !changePassword ? true : password === confirmPassword),
         { message: "Passwords don't match.", path: ['confirmPassword'] }
     );
 
@@ -99,32 +100,51 @@ type UserDialogProps = {
 export default function UserDialog({ currentRow, open, onOpenChange, dialogQueryKey }: UserDialogProps) {
     const isEdit = !!currentRow;
     const token = localStorage.getItem('auth_token');
-    const [isPasswordTouched, setIsPasswordTouched] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const queryClient = useQueryClient();
     const { toast } = useToast();
     const form = useForm<UserForm>({
         resolver: zodResolver(formSchema),
-        defaultValues: isEdit
-            ? {
-                name: currentRow?.name || '',
-                email: currentRow?.email || '',
-                role: currentRow?.roles?.[0]?.name.toLowerCase() || '',
-                password: '',
-                confirmPassword: '',
-                active: currentRow?.active ?? true,
-                isEdit,
-            }
-            : {
-                name: '',
-                email: '',
-                role: '',
-                password: '',
-                confirmPassword: '',
-                active: true,
-                isEdit,
-            },
+        defaultValues: {
+            name: '',
+            email: '',
+            role: '',
+            password: '',
+            confirmPassword: '',
+            active: true,
+            isEdit: false,
+            changePassword: false,
+        },
     });
+
+    useEffect(() => {
+        if (open) {
+            const values = isEdit
+                ? {
+                    name: currentRow?.name || '',
+                    email: currentRow?.email || '',
+                    role: currentRow?.roles?.[0]?.name.toLowerCase() || '',
+                    password: '',
+                    confirmPassword: '',
+                    active: !!currentRow?.active,  // FIX: Explicitly convert to boolean (handles 1/0 from backend)
+                    isEdit,
+                    changePassword: false,
+                }
+                : {
+                    name: '',
+                    email: '',
+                    role: '',
+                    password: '',
+                    confirmPassword: '',
+                    active: true,
+                    isEdit,
+                    changePassword: undefined,
+                };
+            form.reset(values);
+        }
+    }, [open, isEdit, currentRow, form]);
+
+    const changePassword = form.watch('changePassword');
 
     const onSubmit = async (values: UserForm) => {
         if (!token) {
@@ -206,16 +226,24 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
             toast({ title: `User ${isEdit ? 'updated' : 'added'} successfully` });
             onOpenChange(false);
             form.reset();
-            setIsPasswordTouched(false);
         } catch (error: any) {
             if (previousData) {
                 queryClient.setQueryData(dialogQueryKey, previousData);
             }
-            const message = error.response?.data?.error || error.message || 'Unknown error';
+            let message = 'Unknown error';
+            if (error.response?.data?.errors) {
+                message = Object.entries(error.response.data.errors)
+                    .map(([field, msgs]: [string, string[]]) => `${field}: ${msgs.join(', ')}`)
+                    .join('\n');
+            } else if (error.response?.data?.message) {
+                message = error.response.data.message;
+            } else if (error.message) {
+                message = error.message;
+            }
             form.setError('root', { message });
             toast({ title: 'Error', description: message, variant: 'destructive' });
         } finally {
-            setIsSubmitting(false);
+            setIsSubmitting(false);  // FIX: Always reset submitting state to unstick button and enable re-submits if needed
         }
     };
 
@@ -224,7 +252,6 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
             onOpenChange(isOpen);
             if (!isOpen) {
                 form.reset();
-                setIsPasswordTouched(false);
             }
         }}>
             <DialogContent className='max-w-full sm:max-w-[425px]'>
@@ -236,15 +263,15 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                 </DialogHeader>
                 <div className='grid gap-4 py-4'>
                     <Form {...form}>
-                        <form id='user-form' onSubmit={form.handleSubmit(onSubmit)} className="space-y-4"> {/* Added space-y-4 for spacing between inputs */}
+                        <form id='user-form' onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                             <FormField
                                 control={form.control}
                                 name='name'
                                 render={({ field }) => (
-                                    <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-2'> {/* Increased gap-y */}
+                                    <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-2'>
                                         <FormLabel className='col-span-2 text-end'>Name</FormLabel>
                                         <FormControl>
-                                            <Input placeholder='e.g., John Doe' className='col-span-4' {...field} />
+                                            <Input autoComplete="off" placeholder='e.g., John Doe' className='col-span-4' {...field} />
                                         </FormControl>
                                         <FormMessage className='col-span-4 col-start-3' />
                                     </FormItem>
@@ -257,7 +284,7 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                                     <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-2'>
                                         <FormLabel className='col-span-2 text-end'>Email</FormLabel>
                                         <FormControl>
-                                            <Input placeholder='e.g., john@example.com' className='col-span-4' {...field} />
+                                            <Input autoComplete="off" placeholder='e.g., john@example.com' className='col-span-4' {...field} />
                                         </FormControl>
                                         <FormMessage className='col-span-4 col-start-3' />
                                     </FormItem>
@@ -269,7 +296,7 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                                 render={({ field }) => (
                                     <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-2'>
                                         <FormLabel className='col-span-2 text-end'>Role</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger className='col-span-4'>
                                                     <SelectValue placeholder="Select a role" />
@@ -287,6 +314,25 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                                     </FormItem>
                                 )}
                             />
+                            {isEdit && (
+                                <FormField
+                                    control={form.control}
+                                    name='changePassword'
+                                    render={({ field }) => (
+                                        <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-2'>
+                                            <FormLabel className='col-span-2 text-end'>Change Password</FormLabel>
+                                            <FormControl>
+                                                <Checkbox
+                                                    checked={field.value}
+                                                    onCheckedChange={field.onChange}
+                                                    className='col-span-4'
+                                                />
+                                            </FormControl>
+                                            <FormMessage className='col-span-4 col-start-3' />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
                             <FormField
                                 control={form.control}
                                 name='password'
@@ -295,15 +341,12 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                                         <FormLabel className='col-span-2 text-end'>Password</FormLabel>
                                         <FormControl>
                                             <Input
+                                                autoComplete="new-password"
                                                 type="password"
                                                 placeholder='e.g., S3cur3P@ssw0rd'
                                                 className='col-span-4'
-                                                disabled={!isPasswordTouched && isEdit}
-                                                onChange={(e) => {
-                                                    field.onChange(e);
-                                                    setIsPasswordTouched(!!e.target.value);
-                                                }}
-                                                value={field.value}
+                                                disabled={isEdit && !changePassword}
+                                                {...field}
                                             />
                                         </FormControl>
                                         <FormDescription className='col-span-4 col-start-3'>
@@ -321,8 +364,9 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                                         <FormLabel className='col-span-2 text-end'>Confirm Password</FormLabel>
                                         <FormControl>
                                             <Input
+                                                autoComplete="new-password"
                                                 type="password"
-                                                disabled={!isPasswordTouched && isEdit}
+                                                disabled={isEdit && !changePassword}
                                                 placeholder='e.g., S3cur3P@ssw0rd'
                                                 className='col-span-4'
                                                 {...field}

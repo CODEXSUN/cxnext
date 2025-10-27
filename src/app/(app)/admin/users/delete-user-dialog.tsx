@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/components/toaser/use-toast';
 import {
     Dialog,
     DialogContent,

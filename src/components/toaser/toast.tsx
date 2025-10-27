@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import { IconX } from "@tabler/icons-react"
 
 const toastVariants = cva(
-    "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+    "group pointer-events-auto relative flex items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
     {
         variants: {
             variant: {
@@ -21,16 +21,31 @@ const toastVariants = cva(
     }
 )
 
-export interface ToastProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof toastVariants> {}
+export interface ToastProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof toastVariants> {
+    open?: boolean
+    onOpenChange?: (open: boolean) => void
+    duration?: number
+}
 
 const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
-    ({ className, variant, ...props }, ref) => {
+    ({ className, variant, open, duration, children, ...props }, ref) => {
         return (
             <div
                 ref={ref}
                 className={cn(toastVariants({ variant }), className)}
+                data-state={open ? "open" : "closed"}
                 {...props}
-            />
+            >
+                {children}
+                {duration && duration !== Infinity && (
+                    <div className="absolute bottom-0 left-0 h-1 w-full overflow-hidden">
+                        <div
+                            className="h-full w-full origin-left scale-x-100 bg-foreground animate-toast-progress"
+                            style={{ animationDuration: `${duration}ms` }}
+                        />
+                    </div>
+                )}
+            </div>
         )
     }
 )
@@ -47,7 +62,7 @@ const ToastViewport = React.forwardRef<
     <ol
         ref={ref}
         className={cn(
-            "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 space-y-2 space-y-reverse sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+            "fixed top-0 right-0 z-[100] flex max-h-screen w-auto flex-col p-4 gap-2 sm:right-0 sm:top-0 md:max-w-[420px]",
             className
         )}
         {...props}

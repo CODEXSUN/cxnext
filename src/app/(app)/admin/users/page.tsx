@@ -3,18 +3,16 @@
 
 import { useState, useMemo } from 'react';
 import axios from 'axios';
-import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader } from "@/components/loader/loader"; // Assuming this is a spinner component
+import { QueryClient, QueryClientProvider, useQuery  } from '@tanstack/react-query';
+import { Loader } from "@/components/loader/loader";
 
 import {
     ColumnDef,
     ColumnFiltersState,
-    flexRender,
     getCoreRowModel,
     getFacetedRowModel,
     getFacetedUniqueValues,
     getFilteredRowModel,
-    getPaginationRowModel,
     getSortedRowModel,
     SortingState,
     useReactTable,
@@ -36,7 +34,7 @@ import { DataTable } from "@/components/table/data-table";
 import { DataTablePagination } from "@/components/table/data-table-pagination";
 import { DataTableColumnHeader } from "@/components/table/data-table-column-header";
 import { IconDotsVertical } from "@tabler/icons-react";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from '@/components/ui/sonner';
 import UserDialog from './user-dialog';
 import DeleteUserDialog from './delete-user-dialog';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -151,7 +149,7 @@ function UsersPageContent() {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [pagination, setPagination] = useState({
         pageIndex: 0,
-        pageSize: 10,
+        pageSize: 20,
     });
     const [addOpen, setAddOpen] = useState(false);
     const [editUser, setEditUser] = useState<User | null>(null);

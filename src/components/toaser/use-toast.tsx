@@ -2,16 +2,18 @@
 "use client"
 
 import * as React from "react"
-import type { ToastActionElement, ToastProps } from "@/components/ui/toast"
+import type { ToastActionElement, ToastProps } from "./toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_REMOVE_DELAY = 1000
 
 type ToasterToast = ToastProps & {
     id: string
     title?: React.ReactNode
     description?: React.ReactNode
     action?: ToastActionElement
+    open?: boolean
+    duration?: number
 }
 
 const actionTypes = {
@@ -104,6 +106,7 @@ export const reducer = (state: State, action: Action): State => {
                     t.id === toastId || toastId === undefined
                         ? {
                             ...t,
+                            open: false,
                         }
                         : t
                 ),
@@ -136,7 +139,7 @@ function dispatch(action: Action) {
 
 interface Toast extends Omit<ToasterToast, "id"> {}
 
-function toast({ ...props }: Toast) {
+function toast({ duration = 5000, ...props }: Toast) {
     const id = genId()
 
     const update = (props: ToasterToast) =>
@@ -151,8 +154,14 @@ function toast({ ...props }: Toast) {
         toast: {
             ...props,
             id,
+            open: true,
+            duration,
         },
     })
+
+    if (duration !== Infinity) {
+        setTimeout(dismiss, duration)
+    }
 
     return {
         id: id,
