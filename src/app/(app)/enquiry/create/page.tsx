@@ -1,4 +1,4 @@
-// src/app/(app)/enquiry/create/page.tsx
+// app/enquiry/page.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import {API_URL} from "@/config";
 
 const enquirySchema = z.object({
     name: z.string().min(2, 'Name is required'),
@@ -42,11 +43,16 @@ export default function EnquiryCreatePage() {
 
     const phone = watch('phone');
 
+    // Auto-lookup contact by phone
     useEffect(() => {
         if (phone && phone.length >= 10) {
             const timer = setTimeout(async () => {
                 try {
-                    const res = await fetch(`/api/contacts/lookup?phone=${encodeURIComponent(phone)}`);
+
+                    const res = await fetch(`${API_URL}/contacts/lookup?phone=${encodeURIComponent(phone)}`, {
+                        cache: 'no-store',
+                    });
+
                     if (res.ok) {
                         const { contact } = await res.json();
                         if (contact) {
@@ -63,6 +69,7 @@ export default function EnquiryCreatePage() {
                     console.error('Lookup failed:', err);
                 }
             }, 600);
+
             return () => clearTimeout(timer);
         } else {
             setContactFound(null);
@@ -72,7 +79,7 @@ export default function EnquiryCreatePage() {
     const onSubmit = async (data: EnquiryFormData) => {
         setIsSubmitting(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_LARAVEL_API_URL}/enquiries`, {
+            const res = await fetch(`${API_URL}/enquiries`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data),
@@ -110,7 +117,79 @@ export default function EnquiryCreatePage() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                {/* ... same inputs ... */}
+                <div>
+                    <label className="block text-sm font-medium mb-1">Phone *</label>
+                    <input
+                        {...register('phone')}
+                        type="tel"
+                        className="w-full px-3 py-2 border rounded-md"
+                        placeholder="+919876543210"
+                    />
+                    {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Name *</label>
+                    <input
+                        {...register('name')}
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-md"
+                        placeholder="John Doe"
+                    />
+                    {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Email (for portal)</label>
+                    <input
+                        {...register('email')}
+                        type="email"
+                        className="w-full px-3 py-2 border rounded-md"
+                        placeholder="john@example.com"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Company</label>
+                    <input
+                        {...register('company_name')}
+                        type="text"
+                        className="w-full px-3 py-2 border rounded-md"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Contact Type</label>
+                    <select {...register('contact_type')} className="w-full px-3 py-2 border rounded-md">
+                        <option value="customer">Customer</option>
+                        <option value="supplier">Supplier</option>
+                        <option value="both">Both</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium mb-1">Your Query *</label>
+                    <textarea
+                        {...register('query')}
+                        rows={4}
+                        className="w-full px-3 py-2 border rounded-md"
+                        placeholder="Describe your requirement..."
+                    />
+                    {errors.query && <p className="text-red-500 text-xs mt-1">{errors.query.message}</p>}
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <input
+                        {...register('grant_portal_access')}
+                        type="checkbox"
+                        id="grant_access"
+                        className="h-4 w-4"
+                    />
+                    <label htmlFor="grant_access" className="text-sm">
+                        Grant portal access (sends login link to email)
+                    </label>
+                </div>
+
                 <button
                     type="submit"
                     disabled={isSubmitting}

@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import axios from 'axios';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { Loader } from '@/components/loader/loader';
 import {
@@ -23,11 +22,11 @@ import { DataTableToolbar } from '@/components/table/data-table-toolbar';
 import { DataTable } from '@/components/table/data-table';
 import { DataTablePagination } from '@/components/table/data-table-pagination';
 import { DataTableColumnHeader } from '@/components/table/data-table-column-header';
-import { IconEye, IconPlus } from '@tabler/icons-react';
+import { IconEye } from '@tabler/icons-react';
 import { Toaster } from '@/components/ui/sonner';
 import { useDebounce } from '@/hooks/use-debounce';
-import Link from 'next/link';
 import {API_URL} from "@/config";
+import {useRouter} from "next/navigation";
 
 const queryClient = new QueryClient();
 
@@ -140,6 +139,7 @@ function EnquiryListPageContent() {
     const debouncedGlobalFilter = useDebounce(globalFilter, 500);
     const [sorting, setSorting] = useState<SortingState>([]);
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
+    const router = useRouter();
 
     const queryKey = useMemo(
         () => [
@@ -207,27 +207,19 @@ function EnquiryListPageContent() {
     // -----------------------------------------------------------------
     // 4. Create handler (used by the "Add" button → redirect)
     // -----------------------------------------------------------------
-    const handleCreate = async (formData: any) => {
-        await createEnquiry(formData);
-        queryClient.invalidateQueries({ queryKey: ['enquiries'] });
-    };
-
     if (isLoading) return <Loader />;
     if (error) return <p className="text-red-600">Error: {(error as any).message}</p>;
 
     return (
         <div className="container mx-auto p-4 space-y-6">
             {isFetching && <Loader />}
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold">Enquiries</h1>
-                <Link href="/enquiry/create">
-                    <Button>
-                        <IconPlus className="mr-2 h-4 w-4" /> Add Enquiry
-                    </Button>
-                </Link>
-            </div>
-
-            <DataTableToolbar table={table} globalFilter={globalFilter} setGlobalFilter={setGlobalFilter} />
+            <DataTableToolbar
+                table={table}
+                globalFilter={globalFilter}
+                setGlobalFilter={setGlobalFilter}
+                onAddClick={() => router.push('/enquiry/create')}
+                label="Enquiry"
+            />
 
             <div className="overflow-hidden rounded-lg border">
                 <DataTable table={table} />

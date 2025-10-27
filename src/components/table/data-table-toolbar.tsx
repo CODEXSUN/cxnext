@@ -17,11 +17,13 @@ export function DataTableToolbar<TData>({
                                             globalFilter,
                                             setGlobalFilter,
                                             onAddClick,
+                                            label
                                         }: {
     table: ReactTable<TData>;
     globalFilter: string;
     setGlobalFilter: React.Dispatch<React.SetStateAction<string>>;
     onAddClick: () => void;
+    label: string;
 }) {
     return (
         <div className="flex items-center justify-between px-4 lg:px-6 mb-4">
@@ -64,9 +66,9 @@ export function DataTableToolbar<TData>({
                             })}
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <Button variant="outline" size="sm" onClick={onAddClick}>
-                    <IconPlus />
-                    <span className="hidden lg:inline">Add User</span>
+                <Button onClick={onAddClick}>
+                    <IconPlus className="mr-2 h-4 w-4" />
+                    <span className="hidden lg:inline"> Add {label}</span>
                 </Button>
             </div>
         </div>
