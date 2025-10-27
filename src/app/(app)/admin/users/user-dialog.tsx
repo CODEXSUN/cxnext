@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/components/toaser/use-toast';
+import { toast } from 'sonner'; // ← Replaced useToast
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,8 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import {
     Form,
-    FormControl,
-    FormDescription,
+    FormControl, FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -94,7 +93,7 @@ type UserDialogProps = {
     currentRow?: User;
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    dialogQueryKey: any[];
+    dialogQueryKey: never[];
 };
 
 export default function UserDialog({ currentRow, open, onOpenChange, dialogQueryKey }: UserDialogProps) {
@@ -102,7 +101,6 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
     const token = localStorage.getItem('auth_token');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const queryClient = useQueryClient();
-    const { toast } = useToast();
     const form = useForm<UserForm>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -126,7 +124,7 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                     role: currentRow?.roles?.[0]?.name.toLowerCase() || '',
                     password: '',
                     confirmPassword: '',
-                    active: !!currentRow?.active,  // FIX: Explicitly convert to boolean (handles 1/0 from backend)
+                    active: !!currentRow?.active,
                     isEdit,
                     changePassword: false,
                 }
@@ -149,7 +147,7 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
     const onSubmit = async (values: UserForm) => {
         if (!token) {
             form.setError('root', { message: 'Authentication required' });
-            toast({ title: 'Error', description: 'Session expired, please log in.', variant: 'destructive' });
+            toast.error('Session expired, please log in.');
             return;
         }
         if (isEdit && !currentRow?.id) {
@@ -174,7 +172,7 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                     };
                     queryClient.setQueryData(dialogQueryKey, updatedData);
                 } else {
-                    tempId = -Date.now(); // Negative temp ID to avoid conflicts
+                    tempId = -Date.now();
                     const newUser: User = {
                         id: tempId,
                         name: values.name,
@@ -184,7 +182,7 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                     };
                     const updatedData = {
                         ...previousData,
-                        data: [newUser, ...previousData.data], // Prepend for immediate visibility
+                        data: [newUser, ...previousData.data],
                     };
                     queryClient.setQueryData(dialogQueryKey, updatedData);
                 }
@@ -208,7 +206,6 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
 
             const userId = isEdit ? currentRow!.id : response.data.user?.id || response.data.id;
 
-            // Handle role
             const newRoleId = roleToId[values.role];
             const oldRoleId = currentRow?.roles?.[0]?.id;
             if (isEdit && oldRoleId && oldRoleId !== newRoleId) {
@@ -223,7 +220,7 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
             }
 
             await queryClient.invalidateQueries({ queryKey: ['users'] });
-            toast({ title: `User ${isEdit ? 'updated' : 'added'} successfully` });
+            toast.success(`User ${isEdit ? 'updated' : 'added'} successfully`);
             onOpenChange(false);
             form.reset();
         } catch (error: any) {
@@ -241,24 +238,22 @@ export default function UserDialog({ currentRow, open, onOpenChange, dialogQuery
                 message = error.message;
             }
             form.setError('root', { message });
-            toast({ title: 'Error', description: message, variant: 'destructive' });
+            toast.error(message);
         } finally {
-            setIsSubmitting(false);  // FIX: Always reset submitting state to unstick button and enable re-submits if needed
+            setIsSubmitting(false);
         }
     };
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => {
             onOpenChange(isOpen);
-            if (!isOpen) {
-                form.reset();
-            }
+            if (!isOpen) form.reset();
         }}>
             <DialogContent className='max-w-full sm:max-w-[425px]'>
                 <DialogHeader>
                     <DialogTitle>{isEdit ? 'Edit User' : 'Add User'}</DialogTitle>
                     <DialogDescription>
-                        {isEdit ? 'Make changes to the user here.' : 'Add a new user here.'} Click save when you're done.
+                        {isEdit ? 'Make changes to the user here.' : 'Add a new user here.'}
                     </DialogDescription>
                 </DialogHeader>
                 <div className='grid gap-4 py-4'>

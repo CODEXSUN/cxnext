@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/components/toaser/use-toast';
+import { toast } from 'sonner'; // ← Replaced useToast
 import {
     Dialog,
     DialogContent,
@@ -43,13 +43,12 @@ export default function DeleteUserDialog({
     const [error, setError] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const queryClient = useQueryClient();
-    const { toast } = useToast();
 
     const handleDelete = async () => {
         if (value.trim() !== currentRow.name) return;
         if (!token) {
             setError('Authentication required');
-            toast({ title: 'Error', description: 'Session expired, please log in.', variant: 'destructive' });
+            toast.error('Session expired, please log in.');
             return;
         }
         setIsDeleting(true);
@@ -70,7 +69,7 @@ export default function DeleteUserDialog({
             });
 
             await queryClient.invalidateQueries({ queryKey: ['users'] });
-            toast({ title: 'User deleted successfully' });
+            toast.success('User deleted successfully');
             onOpenChange(false);
             setValue('');
             setError(null);
@@ -80,23 +79,20 @@ export default function DeleteUserDialog({
             }
             const message = error.response?.data?.error || error.message || 'Unknown error';
             setError(message);
-            toast({ title: 'Error', description: message, variant: 'destructive' });
+            toast.error(message);
         } finally {
             setIsDeleting(false);
         }
     };
 
     return (
-        <Dialog
-            open={open}
-            onOpenChange={(isOpen) => {
-                onOpenChange(isOpen);
-                if (!isOpen) {
-                    setValue('');
-                    setError(null);
-                }
-            }}
-        >
+        <Dialog open={open} onOpenChange={(isOpen) => {
+            onOpenChange(isOpen);
+            if (!isOpen) {
+                setValue('');
+                setError(null);
+            }
+        }}>
             <DialogContent className='max-w-full sm:max-w-md'>
                 <DialogHeader className='text-start'>
                     <DialogTitle className='flex items-center gap-2 text-destructive'>
