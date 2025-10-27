@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { IconLayoutColumns, IconPlus } from "@tabler/icons-react"
+import { IconPlus } from "@tabler/icons-react"
 import { Table as ReactTable } from "@tanstack/react-table"
 import {MixerHorizontalIcon} from "@radix-ui/react-icons";
 
