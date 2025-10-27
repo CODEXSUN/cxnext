@@ -1,10 +1,9 @@
-// nav-main.tsx (FINAL: Darker Hover + Active | Auto Active State | CODEXSUN ERP)
+// nav-main.tsx (Quick Create: Full Width | White Hover Text | Inbox Removed | CODEXSUN ERP)
 "use client";
 
-import { IconCirclePlusFilled, IconMail, type Icon } from "@tabler/icons-react";
+import { IconCirclePlusFilled, type Icon } from "@tabler/icons-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation"; // ← Auto-detect active route
-import { Button } from "@/components/ui/button";
+import { usePathname } from "next/navigation";
 import {
     SidebarGroup,
     SidebarGroupContent,
@@ -22,76 +21,67 @@ export function NavMain({
         icon?: Icon;
     }[];
 }) {
-    const pathname = usePathname(); // ← Real-time active state (no refresh needed)
+    const pathname = usePathname();
 
     return (
         <SidebarGroup>
             <SidebarGroupContent className="flex flex-col gap-2">
                 <SidebarMenu>
-                    <SidebarMenuItem className="flex items-center gap-2">
-                        <Link href={"/dashboard"} passHref legacyBehavior>
+                    <SidebarMenuItem>
+
+                        <Link href={"/create"} className="flex-1">
                             <SidebarMenuButton
                                 asChild
                                 tooltip="Quick Create"
-                                className="bg-primary text-primary-foreground hover:bg-primary/80 active:bg-primary/70 min-w-8 duration-200 ease-linear"
+                                className="
+                  bg-primary text-primary-foreground
+                  hover:bg-primary/70 hover:text-white/80
+                  active:bg-primary/80 active:text-white/80
+                  w-full justify-start h-8 px-2.5
+                  duration-200 ease-linear
+                  font-medium
+                "
                             >
-                                <a>
-                                    <IconCirclePlusFilled />
-                                    <span>Quick Create</span>
-                                </a>
+                <span className="flex items-center gap-2 w-full h-full">
+                  <IconCirclePlusFilled className="size-4 shrink-0" />
+                  <span className="truncate">Quick Create</span>
+                </span>
                             </SidebarMenuButton>
-                        </Link>
-
-                        <Link href={'/inbox'} passHref>
-                            <Button
-                                asChild
-                                size="icon"
-                                variant="outline"
-                                className="size-8 group-data-[collapsible=icon]:opacity-0 hover:bg-accent/70"
-                            >
-                                <a>
-                                    <IconMail />
-                                    <span className="sr-only">Inbox</span>
-                                </a>
-                            </Button>
                         </Link>
                     </SidebarMenuItem>
                 </SidebarMenu>
 
-                {/* Dynamic Menu: Darker Hover + Active + Auto Update */}
+                {/* Dynamic Menu Items */}
                 <SidebarMenu>
                     {items.map((item) => {
                         const isActive = pathname === item.url;
 
                         return (
                             <SidebarMenuItem key={item.title}>
-                                <Link href={item.url} passHref>
+                                <Link href={item.url} className="w-full">
                                     <SidebarMenuButton
                                         asChild
                                         tooltip={item.title}
                                         isActive={isActive}
                                         className={`
-                      relative overflow-hidden rounded-md
+                      relative overflow-hidden rounded-md w-full
                       transition-all duration-200 ease-out
-                      /* Base */
-                      hover:bg-sidebar-accent/80 hover:text-sidebar-accent-foreground
-                      data-[active=true]:bg-sidebar-accent/50 data-[active=true]:text-sidebar-accent-foreground
+                      hover:bg-sidebar-accent/85 hover:text-sidebar-accent-foreground
+                      data-[active=true]:bg-sidebar-accent/95 data-[active=true]:text-sidebar-accent-foreground
                       data-[active=true]:font-bold data-[active=true]:shadow-md
-                      /* Darker Overlay Effect */
                       after:absolute after:inset-0 after:transition-opacity after:duration-200 after:pointer-events-none after:rounded-md
-                      hover:after:bg-black/20 hover:after:opacity-100
-                      data-[active=true]:after:bg-black/10 data-[active=true]:after:opacity-100
-                      /* Icon Fix */
+                      hover:after:bg-black/25 hover:after:opacity-100
+                      data-[active=true]:after:bg-black/35 data-[active=true]:after:opacity-100
                       [&>svg]:shrink-0 [&>svg]:transition-colors [&>svg]:duration-200
                       [&>svg]:text-sidebar-foreground/80
                       hover:[&>svg]:text-sidebar-accent-foreground
                       data-[active=true]:[&>svg]:text-sidebar-accent-foreground
                     `}
                                     >
-                                        <a className="relative z-10 flex items-center gap-2 w-full h-full px-2 py-1.5">
-                                            {item.icon && <item.icon className="size-4" />}
-                                            <span>{item.title}</span>
-                                        </a>
+                    <span className="flex items-center gap-2 w-full h-8 px-2">
+                      {item.icon && <item.icon className="size-4" />}
+                        <span className="truncate">{item.title}</span>
+                    </span>
                                     </SidebarMenuButton>
                                 </Link>
                             </SidebarMenuItem>
