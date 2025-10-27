@@ -1,18 +1,22 @@
 // app/enquiry/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import React, {useState, useEffect} from 'react';
+import {useForm} from 'react-hook-form';
+import {zodResolver} from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+import {toast} from 'sonner';
+import {useRouter} from 'next/navigation';
 import {API_URL} from "@/config";
+import {DialogFooter} from "@/components/ui/dialog";
+import {Button} from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 const enquirySchema = z.object({
     name: z.string().min(2, 'Name is required'),
-    phone: z.string().regex(/^\+?\d{10,15}$/, 'Valid phone number required'),
-    email: z.string().email().optional().or(z.literal('')),
+    phone: z.string().regex(/^\+?\d{10}$/, 'Valid 10-digit phone number required'),
+    email: z.email().optional().or(z.literal('')),
     company_name: z.string().optional(),
     query: z.string().min(10, 'Query too short'),
     contact_type: z.enum(['customer', 'supplier', 'both']),
@@ -29,7 +33,7 @@ export default function EnquiryCreatePage() {
     const {
         register,
         handleSubmit,
-        formState: { errors },
+        formState: {errors},
         watch,
         setValue,
         reset,
@@ -54,7 +58,7 @@ export default function EnquiryCreatePage() {
                     });
 
                     if (res.ok) {
-                        const { contact } = await res.json();
+                        const {contact} = await res.json();
                         if (contact) {
                             setContactFound(contact);
                             setValue('name', contact.name);
@@ -81,7 +85,7 @@ export default function EnquiryCreatePage() {
         try {
             const res = await fetch(`${API_URL}/enquiries`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data),
             });
 
@@ -104,7 +108,7 @@ export default function EnquiryCreatePage() {
     };
 
     return (
-        <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10">
+        <div className="max-w-2xl mx-auto p-6 bg-white border border-accent rounded-lg shadow-md mt-10">
             <h1 className="text-2xl font-bold mb-6">Submit Enquiry</h1>
 
             {contactFound && (
@@ -123,7 +127,7 @@ export default function EnquiryCreatePage() {
                         {...register('phone')}
                         type="tel"
                         className="w-full px-3 py-2 border rounded-md"
-                        placeholder="+919876543210"
+                        placeholder=""
                     />
                     {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
                 </div>
@@ -134,7 +138,7 @@ export default function EnquiryCreatePage() {
                         {...register('name')}
                         type="text"
                         className="w-full px-3 py-2 border rounded-md"
-                        placeholder="John Doe"
+                        placeholder=""
                     />
                     {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
                 </div>
@@ -145,7 +149,7 @@ export default function EnquiryCreatePage() {
                         {...register('email')}
                         type="email"
                         className="w-full px-3 py-2 border rounded-md"
-                        placeholder="john@example.com"
+                        placeholder=""
                     />
                 </div>
 
@@ -178,25 +182,17 @@ export default function EnquiryCreatePage() {
                     {errors.query && <p className="text-red-500 text-xs mt-1">{errors.query.message}</p>}
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <input
-                        {...register('grant_portal_access')}
-                        type="checkbox"
-                        id="grant_access"
-                        className="h-4 w-4"
-                    />
-                    <label htmlFor="grant_access" className="text-sm">
-                        Grant portal access (sends login link to email)
-                    </label>
+                <div className="flex items-center gap-3">
+                    <Checkbox id="grant_access"  {...register('grant_portal_access')}/>
+                    <Label htmlFor="grant_access">Grant portal access (sends login link to email)</Label>
                 </div>
 
-                <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
-                >
-                    {isSubmitting ? 'Submitting...' : 'Submit Enquiry'}
-                </button>
+                <DialogFooter>
+                    <Button type='submit' form='user-form' disabled={isSubmitting}>
+                        {isSubmitting ? 'Saving...' : 'Save Enquiry'}
+                    </Button>
+                </DialogFooter>
+
             </form>
         </div>
     );
