@@ -5,12 +5,13 @@ import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
-    DropdownMenuContent,
+    DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { IconLayoutColumns, IconPlus } from "@tabler/icons-react"
 import { Table as ReactTable } from "@tanstack/react-table"
+import {MixerHorizontalIcon} from "@radix-ui/react-icons";
 
 export function DataTableToolbar<TData>({
                                             table,
@@ -36,13 +37,18 @@ export function DataTableToolbar<TData>({
             <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                            <IconLayoutColumns />
-                            <span className="hidden lg:inline">Customize Columns</span>
-                            <span className="lg:hidden">Columns</span>
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            className='ms-auto hidden h-8 lg:flex'
+                        >
+                            <MixerHorizontalIcon className='size-4' />
+                            View
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
+                        <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
                         {table
                             .getAllColumns()
                             .filter(
