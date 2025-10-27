@@ -11,15 +11,13 @@ import {
     IconFileWord,
     IconBriefcase,
     IconHelp,
-    IconInnerShadowTop,
-    IconListDetails,
+    IconBrandCarbon ,
     IconReport,
     IconSearch,
     IconSettings,
     IconUsers,
 } from "@tabler/icons-react"
 
-import {NavDocuments} from "./nav-documents"
 import {NavMain} from "./nav-main"
 import {NavSecondary} from "./nav-secondary"
 import {NavUser} from "./nav-user"
@@ -32,6 +30,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
+import {ListTodo} from "lucide-react";
 
 const data = {
     user: {
@@ -58,7 +57,7 @@ const data = {
         {
             title: "Todos",
             url: "/todos",
-            icon: IconListDetails,
+            icon: ListTodo,
         },
         {
             title: "Users",
@@ -161,7 +160,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                             className="data-[slot=sidebar-menu-button]:!p-1.5"
                         >
                             <a href="/dashboard">
-                                <IconInnerShadowTop className="!size-5"/>
+                                <IconBrandCarbon  className="!size-5"/>
                                 <span className="text-base font-semibold">Codexsun</span>
                             </a>
                         </SidebarMenuButton>

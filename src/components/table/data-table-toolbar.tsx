@@ -67,8 +67,8 @@ export function DataTableToolbar<TData>({
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <Button onClick={onAddClick}>
-                    <IconPlus className="mr-2 h-4 w-4" />
-                    <span className="hidden lg:inline"> Add {label}</span>
+                    <IconPlus className="mr-1 h-4 w-4" />
+                    <span className="hidden lg:inline">Add {label}</span>
                 </Button>
             </div>
         </div>
