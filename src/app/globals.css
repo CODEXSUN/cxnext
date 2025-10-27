@@ -131,3 +131,25 @@
 .animate-toast-progress {
     animation: toast-progress linear forwards;
 }
+
+.theme-ocean {
+    --primary: 200 100% 50%;          /* Ocean blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 200 20% 90%;
+    --secondary-foreground: 200 100% 30%;
+    --accent: 180 100% 85%;
+    --accent-foreground: 180 100% 25%;
+    --muted: 200 20% 95%;
+    --muted-foreground: 200 20% 40%;
+}
+
+.theme-forest {
+    --primary: 120 60% 40%;           /* Forest green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 120 20% 90%;
+    --secondary-foreground: 120 60% 20%;
+    --accent: 80 60% 85%;
+    --accent-foreground: 80 60% 25%;
+    --muted: 120 20% 95%;
+    --muted-foreground: 120 20% 40%;
+}
