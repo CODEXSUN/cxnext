@@ -1,198 +1,251 @@
-// app/enquiry/page.tsx
+// src/app/(app)/enquiry/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { toast } from 'sonner';
+import { useState, useMemo } from 'react';
+import axios from 'axios';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { Loader } from '@/components/loader/loader';
+import {
+    ColumnDef,
+    ColumnFiltersState,
+    getCoreRowModel,
+    getFacetedRowModel,
+    getFacetedUniqueValues,
+    getFilteredRowModel,
+    getSortedRowModel,
+    SortingState,
+    useReactTable,
+    VisibilityState,
+} from '@tanstack/react-table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { DataTableToolbar } from '@/components/table/data-table-toolbar';
+import { DataTable } from '@/components/table/data-table';
+import { DataTablePagination } from '@/components/table/data-table-pagination';
+import { DataTableColumnHeader } from '@/components/table/data-table-column-header';
+import { IconEye, IconPlus } from '@tabler/icons-react';
+import { Toaster } from '@/components/ui/sonner';
+import { useDebounce } from '@/hooks/use-debounce';
+import Link from 'next/link';
+import {API_URL} from "@/config";
 
-const enquirySchema = z.object({
-    name: z.string().min(2, 'Name is required'),
-    phone: z.string().regex(/^\+?\d{10,15}$/, 'Valid phone number required'),
-    email: z.string().email().optional().or(z.literal('')),
-    company_name: z.string().optional(),
-    query: z.string().min(10, 'Query too short'),
-    contact_type: z.enum(['customer', 'supplier', 'both']),
-    grant_portal_access: z.boolean().optional(),
-});
+const queryClient = new QueryClient();
 
-type EnquiryFormData = z.infer<typeof enquirySchema>;
-
-export default function EnquiryForm() {
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [contactFound, setContactFound] = useState<any>(null);
-
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-        watch,
-        setValue,
-        reset,
-    } = useForm<EnquiryFormData>({
-        resolver: zodResolver(enquirySchema),
-        defaultValues: {
-            contact_type: 'customer',
-            grant_portal_access: false,
-        },
+// ---------------------------------------------------------------------
+// 1. Embedded API – GET (list) + POST (create)
+// ---------------------------------------------------------------------
+async function getEnquiries(params: any) {
+    const res = await fetch(`${API_URL}/enquiries?${new URLSearchParams(params).toString()}`, {
+        cache: 'no-store',
     });
+    if (!res.ok) throw new Error('Failed to fetch');
+    return res.json();
+}
 
-    const phone = watch('phone');
+async function createEnquiry(data: any) {
+    const res = await fetch(`${API_URL}/enquiries`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to create');
+    }
+    return res.json();
+}
 
-    // Auto-lookup contact by phone
-    useEffect(() => {
-        if (phone && phone.length >= 10) {
-            const timer = setTimeout(async () => {
-                try {
-                    const res = await fetch(`/api/contacts/lookup?phone=${encodeURIComponent(phone)}`);
-                    if (res.ok) {
-                        const { contact } = await res.json();
-                        if (contact) {
-                            setContactFound(contact);
-                            setValue('name', contact.name);
-                            setValue('email', contact.email || '');
-                            setValue('contact_type', contact.contact_type);
-                            toast.success('Contact found! Details auto-filled.');
-                        } else {
-                            setContactFound(null);
-                        }
-                    }
-                } catch (err) {
-                    console.error('Lookup failed:', err);
+// ---------------------------------------------------------------------
+// 2. Table columns
+// ---------------------------------------------------------------------
+interface Enquiry {
+    id: number;
+    contact: {
+        id: number;
+        name: string;
+        phone: string;
+        contact_code: string;
+    };
+    query: string;
+    status: string;
+    created_at: string;
+}
+
+const columns: ColumnDef<Enquiry>[] = [
+    {
+        accessorKey: 'contact.contact_code',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Code" />,
+        cell: ({ row }) => <div className="font-mono">{row.original.contact.contact_code}</div>,
+    },
+    {
+        accessorKey: 'contact.name',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Contact" />,
+        cell: ({ row }) => <div>{row.original.contact.name}</div>,
+    },
+    {
+        accessorKey: 'contact.phone',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Phone" />,
+        cell: ({ row }) => <div>{row.original.contact.phone}</div>,
+    },
+    {
+        accessorKey: 'query',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Query" />,
+        cell: ({ row }) => (
+            <div className="max-w-xs truncate" title={row.original.query}>
+                {row.original.query}
+            </div>
+        ),
+    },
+    {
+        accessorKey: 'status',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+        cell: ({ row }) => (
+            <Badge
+                variant={
+                    row.original.status === 'open'
+                        ? 'default'
+                        : row.original.status === 'in_progress'
+                            ? 'secondary'
+                            : 'outline'
                 }
-            }, 600);
+            >
+                {row.original.status.replace('_', ' ')}
+            </Badge>
+        ),
+        filterFn: 'equals',
+    },
+    {
+        accessorKey: 'created_at',
+        header: ({ column }) => <DataTableColumnHeader column={column} title="Submitted" />,
+        cell: ({ row }) => new Date(row.original.created_at).toLocaleDateString(),
+    },
+    {
+        id: 'actions',
+        cell: ({ row }) => (
+            <Button variant="ghost" size="icon" onClick={() => alert(`View #${row.original.id}`)}>
+                <IconEye className="h-4 w-4" />
+                <span className="sr-only">View</span>
+            </Button>
+        ),
+    },
+];
 
-            return () => clearTimeout(timer);
-        } else {
-            setContactFound(null);
-        }
-    }, [phone, setValue]);
+// ---------------------------------------------------------------------
+// 3. List component
+// ---------------------------------------------------------------------
+function EnquiryListPageContent() {
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+    const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+    const [globalFilter, setGlobalFilter] = useState('');
+    const debouncedGlobalFilter = useDebounce(globalFilter, 500);
+    const [sorting, setSorting] = useState<SortingState>([]);
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 20 });
 
-    const onSubmit = async (data: EnquiryFormData) => {
-        setIsSubmitting(true);
-        try {
-            const res = await fetch('/api/enquiries', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
-            });
+    const queryKey = useMemo(
+        () => [
+            'enquiries',
+            debouncedGlobalFilter,
+            JSON.stringify(sorting),
+            JSON.stringify(columnFilters),
+            pagination.pageIndex,
+            pagination.pageSize,
+        ],
+        [debouncedGlobalFilter, sorting, columnFilters, pagination]
+    );
 
-            const result = await res.json();
-
-            if (res.ok) {
-                toast.success('Enquiry submitted successfully!');
-                if (result.portal) {
-                    toast.info(result.portal.message);
-                }
-                reset(); // Clear form
-                setContactFound(null);
-            } else {
-                const errorMsg = result.message || result.errors?.[0] || 'Submission failed';
-                toast.error(errorMsg);
-            }
-        } catch (err: any) {
-            toast.error(err.message || 'Network error');
-        } finally {
-            setIsSubmitting(false);
-        }
+    const fetchEnquiries = async () => {
+        const sortBy = sorting[0]?.id || 'id';
+        const sortDir = sorting[0]?.desc ? 'desc' : 'asc';
+        const params: any = {
+            search: debouncedGlobalFilter,
+            sort_by: sortBy,
+            sort_dir: sortDir,
+            page: pagination.pageIndex + 1,
+            per_page: pagination.pageSize,
+        };
+        columnFilters.forEach((f) => {
+            params[`filter[${f.id}]`] = f.value;
+        });
+        return getEnquiries(params);
     };
 
+    const { data, isLoading, isFetching, error } = useQuery({
+        queryKey,
+        queryFn: fetchEnquiries,
+        keepPreviousData: true,
+    });
+
+    const enquiries = useMemo(() => data?.data || [], [data]);
+    const pageCount = useMemo(() => data?.meta?.last_page || 0, [data]);
+
+    const table = useReactTable({
+        data: enquiries,
+        columns,
+        pageCount,
+        manualPagination: true,
+        manualSorting: true,
+        manualFiltering: true,
+        state: {
+            sorting,
+            columnVisibility,
+            columnFilters,
+            globalFilter,
+            pagination,
+        },
+        onSortingChange: setSorting,
+        onColumnFiltersChange: setColumnFilters,
+        onGlobalFilterChange: setGlobalFilter,
+        onColumnVisibilityChange: setColumnVisibility,
+        onPaginationChange: setPagination,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getSortedRowModel: getSortedRowModel(),
+        getFacetedRowModel: getFacetedRowModel(),
+        getFacetedUniqueValues: getFacetedUniqueValues(),
+    });
+
+    // -----------------------------------------------------------------
+    // 4. Create handler (used by the "Add" button → redirect)
+    // -----------------------------------------------------------------
+    const handleCreate = async (formData: any) => {
+        await createEnquiry(formData);
+        queryClient.invalidateQueries({ queryKey: ['enquiries'] });
+    };
+
+    if (isLoading) return <Loader />;
+    if (error) return <p className="text-red-600">Error: {(error as any).message}</p>;
+
     return (
-        <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md mt-10">
-            <h1 className="text-2xl font-bold mb-6">Submit Enquiry</h1>
+        <div className="container mx-auto p-4 space-y-6">
+            {isFetching && <Loader />}
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold">Enquiries</h1>
+                <Link href="/enquiry/create">
+                    <Button>
+                        <IconPlus className="mr-2 h-4 w-4" /> Add Enquiry
+                    </Button>
+                </Link>
+            </div>
 
-            {contactFound && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded">
-                    <p className="text-sm text-green-800">
-                        <strong>Contact Found:</strong> {contactFound.name} ({contactFound.contact_code})
-                        {contactFound.has_account && ' | Account Active'}
-                    </p>
-                </div>
-            )}
+            <DataTableToolbar table={table} globalFilter={globalFilter} setGlobalFilter={setGlobalFilter} />
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div>
-                    <label className="block text-sm font-medium mb-1">Phone *</label>
-                    <input
-                        {...register('phone')}
-                        type="tel"
-                        className="w-full px-3 py-2 border rounded-md"
-                        placeholder="+919876543210"
-                    />
-                    {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
-                </div>
+            <div className="overflow-hidden rounded-lg border">
+                <DataTable table={table} />
+            </div>
 
-                <div>
-                    <label className="block text-sm font-medium mb-1">Name *</label>
-                    <input
-                        {...register('name')}
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-md"
-                        placeholder="John Doe"
-                    />
-                    {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name.message}</p>}
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-1">Email (for portal)</label>
-                    <input
-                        {...register('email')}
-                        type="email"
-                        className="w-full px-3 py-2 border rounded-md"
-                        placeholder="john@example.com"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-1">Company</label>
-                    <input
-                        {...register('company_name')}
-                        type="text"
-                        className="w-full px-3 py-2 border rounded-md"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-1">Contact Type</label>
-                    <select {...register('contact_type')} className="w-full px-3 py-2 border rounded-md">
-                        <option value="customer">Customer</option>
-                        <option value="supplier">Supplier</option>
-                        <option value="both">Both</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-1">Your Query *</label>
-                    <textarea
-                        {...register('query')}
-                        rows={4}
-                        className="w-full px-3 py-2 border rounded-md"
-                        placeholder="Describe your requirement..."
-                    />
-                    {errors.query && <p className="text-red-500 text-xs mt-1">{errors.query.message}</p>}
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <input
-                        {...register('grant_portal_access')}
-                        type="checkbox"
-                        id="grant_access"
-                        className="h-4 w-4"
-                    />
-                    <label htmlFor="grant_access" className="text-sm">
-                        Grant portal access (sends login link to email)
-                    </label>
-                </div>
-
-                <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50 transition"
-                >
-                    {isSubmitting ? 'Submitting...' : 'Submit Enquiry'}
-                </button>
-            </form>
+            <DataTablePagination table={table} />
+            <Toaster />
         </div>
+    );
+}
+
+// ---------------------------------------------------------------------
+// 5. Page wrapper
+// ---------------------------------------------------------------------
+export default function EnquiryListPage() {
+    return (
+        <QueryClientProvider client={queryClient}>
+            <EnquiryListPageContent />
+        </QueryClientProvider>
     );
 }
