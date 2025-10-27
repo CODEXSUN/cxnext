@@ -26,30 +26,33 @@ export function NavMain({
     return (
         <SidebarGroup>
             <SidebarGroupContent className="flex flex-col gap-2">
-                <SidebarMenu>
-                    <SidebarMenuItem>
 
-                        <Link href={"/create"} className="flex-1">
-                            <SidebarMenuButton
-                                asChild
-                                tooltip="Quick Create"
-                                className="
-                  bg-primary text-primary-foreground
-                  hover:bg-primary/70 hover:text-white/80
-                  active:bg-primary/80 active:text-white/80
-                  w-full justify-start h-8 px-2.5
-                  duration-200 ease-linear
-                  font-medium
-                "
-                            >
-                <span className="flex items-center gap-2 w-full h-full">
-                  <IconCirclePlusFilled className="size-4 shrink-0" />
-                  <span className="truncate">Quick Create</span>
-                </span>
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+                {/* Quick Menu Items : Todo : we will work later */}
+
+                {/*<SidebarMenu>*/}
+                {/*    <SidebarMenuItem>*/}
+
+                {/*        <Link href={"/create"} className="flex-1">*/}
+                {/*            <SidebarMenuButton*/}
+                {/*                asChild*/}
+                {/*                tooltip="Quick Create"*/}
+                {/*                className="*/}
+                {/*  bg-primary text-primary-foreground*/}
+                {/*  hover:bg-primary/70 hover:text-white/80*/}
+                {/*  active:bg-primary/80 active:text-white/80*/}
+                {/*  w-full justify-start h-8 px-2.5*/}
+                {/*  duration-200 ease-linear*/}
+                {/*  font-medium*/}
+                {/*"*/}
+                {/*            >*/}
+                {/*<span className="flex items-center gap-2 w-full h-full">*/}
+                {/*  <IconCirclePlusFilled className="size-4 shrink-0" />*/}
+                {/*  <span className="truncate">Quick Create</span>*/}
+                {/*</span>*/}
+                {/*            </SidebarMenuButton>*/}
+                {/*        </Link>*/}
+                {/*    </SidebarMenuItem>*/}
+                {/*</SidebarMenu>*/}
 
                 {/* Dynamic Menu Items */}
                 <SidebarMenu>

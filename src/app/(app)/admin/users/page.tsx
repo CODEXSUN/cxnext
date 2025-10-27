@@ -45,7 +45,7 @@ interface User {
     id: number;
     name: string;
     email: string;
-    roles?: { id: number; name: string }[]; // Made optional
+    roles?: { id: number; name: string }[];
     active: boolean;
 }
 
@@ -191,7 +191,7 @@ function UsersPageContent() {
     const { data, isLoading, isFetching, error } = useQuery({
         queryKey,
         queryFn: fetchUsers,
-        keepPreviousData: true, // Optimization: Keep previous data while fetching new
+        keepPreviousData: true,
     });
 
     const users = useMemo(() => [...(data?.data || [])], [data]);
@@ -252,8 +252,7 @@ function UsersPageContent() {
                 onAddClick={() => {
                     setAddOpen(true);
                     setDialogQueryKey(queryKey);
-                }}
-            />
+                }} label={"User"}            />
 
             <div className="overflow-hidden rounded-lg border">
                 <DataTable table={table} />
