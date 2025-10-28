@@ -1,8 +1,8 @@
-// app/components/nav-main.tsx
+// app/components/nav-admin.tsx
 "use client";
 
-import { type Icon } from "@tabler/icons-react";
 import { type LucideIcon } from "lucide-react";
+import { type Icon } from "@tabler/icons-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,19 +12,26 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/global/auth/useAuth";
 
 type NavItemIcon = Icon | LucideIcon;
 
-export function NavMain({
-                            items,
-                        }: {
+export function NavAdmin({
+                             items,
+                         }: {
     items: {
         title: string;
         url: string;
         icon?: NavItemIcon;
     }[];
 }) {
+    const { hasRole } = useAuth();
     const pathname = usePathname();
+
+    // Hide entire NavAdmin if user is not admin
+    if (!hasRole("admin")) {
+        return null;
+    }
 
     return (
         <SidebarGroup>

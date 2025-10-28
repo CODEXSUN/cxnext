@@ -1,12 +1,19 @@
 // app/global/auth/AuthContextTypes.ts
 import React from "react";
 
+export interface Role {
+    id: number;
+    name: string;
+}
+
 export interface User {
     id: string;
-    username: string;
+    name: string;          // ← Updated from `username` to `name`
     email: string;
-    tenantId?: string;  // Optional for now
-    roles: string[];  // Array of role names from RBAC
+    active: boolean;       // ← Added from API
+    tenantId?: string;     // Optional
+    roles: Role[];         // ← Full role objects
+    permissions: string[]; // ← All permission names
     token: string;
 }
 

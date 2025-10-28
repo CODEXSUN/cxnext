@@ -15,5 +15,17 @@ export const useAuth = () => {
             ...(ctx.user?.tenantId ? { 'x-tenant-id': `${ctx.user.tenantId}` } : {}),
             'x-user-id': `${ctx.user?.id}`,
         }),
+        // Helper: Check role
+        hasRole: (roleName: string) =>
+            ctx.user?.roles.some(r => r.name === roleName) ?? false,
+        // Helper: Check permission
+        hasPermission: (permission: string) =>
+            ctx.user?.permissions.includes(permission) ?? false,
+        // Helper: Check any of roles
+        hasAnyRole: (roles: string[]) =>
+            roles.some(role => ctx.user?.roles.some(r => r.name === role)) ?? false,
+        // Helper: Check any of permissions
+        hasAnyPermission: (permissions: string[]) =>
+            permissions.some(p => ctx.user?.permissions.includes(p)) ?? false,
     };
 };

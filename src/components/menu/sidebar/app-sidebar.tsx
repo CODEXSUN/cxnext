@@ -1,3 +1,4 @@
+// app/components/app-sidebar.tsx
 "use client"
 
 import * as React from "react"
@@ -11,16 +12,19 @@ import {
     IconFileWord,
     IconBriefcase,
     IconHelp,
-    IconBrandCarbon ,
+    IconBrandCarbon,
     IconReport,
     IconSearch,
     IconSettings,
     IconUsers,
+    IconShieldLock,
 } from "@tabler/icons-react"
+import { ListTodo } from "lucide-react";
 
-import {NavMain} from "./nav-main"
-import {NavSecondary} from "./nav-secondary"
-import {NavUser} from "./nav-user"
+import { NavMain } from "./nav-main"
+import { NavSecondary } from "./nav-secondary"
+import { NavUser } from "./nav-user"
+import { NavAdmin } from "./nav-admin"
 import {
     Sidebar,
     SidebarContent,
@@ -30,7 +34,6 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import {ListTodo} from "lucide-react";
 
 const data = {
     user: {
@@ -58,60 +61,19 @@ const data = {
             title: "Todos",
             url: "/todos",
             icon: ListTodo,
-        },
+        }
+    ],
+    navAdmin: [
         {
             title: "Users",
             url: "/admin/users",
             icon: IconUsers,
         },
-    ],
-    navClouds: [
         {
-            title: "Capture",
-            icon: IconCamera,
-            isActive: true,
-            url: "#",
-            items: [
-                {
-                    title: "Active Proposals",
-                    url: "#",
-                },
-                {
-                    title: "Archived",
-                    url: "#",
-                },
-            ],
-        },
-        {
-            title: "Proposal",
-            icon: IconFileDescription,
-            url: "#",
-            items: [
-                {
-                    title: "Active Proposals",
-                    url: "#",
-                },
-                {
-                    title: "Archived",
-                    url: "#",
-                },
-            ],
-        },
-        {
-            title: "Prompts",
-            icon: IconFileAi,
-            url: "#",
-            items: [
-                {
-                    title: "Active Proposals",
-                    url: "#",
-                },
-                {
-                    title: "Archived",
-                    url: "#",
-                },
-            ],
-        },
+            title: "Credentials",
+            url: "/credentials",
+            icon: IconShieldLock,
+        }
     ],
     navSecondary: [
         {
@@ -130,26 +92,9 @@ const data = {
             icon: IconSearch,
         },
     ],
-    documents: [
-        {
-            name: "Data Library",
-            url: "#",
-            icon: IconDatabase,
-        },
-        {
-            name: "Reports",
-            url: "#",
-            icon: IconReport,
-        },
-        {
-            name: "Word Assistant",
-            url: "#",
-            icon: IconFileWord,
-        },
-    ],
 }
 
-export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
         <Sidebar collapsible="icon" {...props}>
             <SidebarHeader>
@@ -160,7 +105,7 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                             className="data-[slot=sidebar-menu-button]:!p-1.5"
                         >
                             <a href="/dashboard">
-                                <IconBrandCarbon  className="!size-5"/>
+                                <IconBrandCarbon className="!size-5" />
                                 <span className="text-base font-semibold">Codexsun</span>
                             </a>
                         </SidebarMenuButton>
@@ -168,12 +113,12 @@ export function AppSidebar({...props}: React.ComponentProps<typeof Sidebar>) {
                 </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-                <NavMain items={data.navMain}/>
-                {/*<NavDocuments items={data.documents}/>*/}
-                <NavSecondary items={data.navSecondary} className="mt-auto"/>
+                <NavMain items={data.navMain} />
+                <NavAdmin items={data.navAdmin} /> {/* ← Only renders if admin */}
+                <NavSecondary items={data.navSecondary} className="mt-auto" />
             </SidebarContent>
             <SidebarFooter>
-                <NavUser user={data.user}/>
+                <NavUser user={data.user} />
             </SidebarFooter>
         </Sidebar>
     )

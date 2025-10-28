@@ -15,7 +15,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const savedToken = localStorage.getItem("auth_token");
         if (savedUser && savedToken) {
             try {
-                setUser(JSON.parse(savedUser));
+                const parsed = JSON.parse(savedUser);
+                setUser(parsed);
                 setToken(savedToken);
             } catch {
                 localStorage.removeItem("auth_user");
@@ -25,21 +26,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
     }, []);
 
-    const login = async (email: string, password: string) => {
+    const login = async (email: string, password: string): Promise<boolean> => {
         try {
             setLoading(true);
             console.log('[AuthContext] Starting login...', { email });
+
             const res = await fetch(`${API_URL}/login`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
             });
 
             if (!res.ok) {
                 const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.error || 'Invalid credentials');
+                throw new Error(errorData.message || 'Invalid credentials');
             }
 
             const data = await res.json();
@@ -47,57 +47,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             const mappedUser: User = {
                 id: data.user.id.toString(),
-                username: data.user.name || "Unknown",  // Use name from backend
+                name: data.user.name,
                 email: data.user.email,
-                tenantId: data.user.tenant_id || "default",  // Default if not present
-                roles: data.user.roles?.map((role: any) => role.name) || [],  // Extract role names
-                token: data.token,  // Correct: from data.token
+                active: data.user.active ?? true,
+                tenantId: data.user.tenant_id || "default",
+                roles: data.user.roles || [],                    // ← Full role objects
+                permissions: data.user.permissions || [],        // ← Full permissions array
+                token: data.token,
             };
 
             setUser(mappedUser);
             setToken(data.token);
             localStorage.setItem("auth_user", JSON.stringify(mappedUser));
             localStorage.setItem("auth_token", data.token);
-            console.log('[AuthContext] User and token stored in localStorage:', mappedUser);
-            setLoading(false);
+            console.log('[AuthContext] Auth saved:', mappedUser);
             return true;
         } catch (error) {
-            setLoading(false);
-            console.error('[AuthContext] Login error:', error instanceof Error ? error.message : 'Unknown error', { email });
+            console.error('[AuthContext] Login failed:', error);
             return false;
+        } finally {
+            setLoading(false);
         }
     };
 
     const logout = async () => {
         try {
             setLoading(true);
-            console.log('[AuthContext] Starting logout...');
             if (token) {
-                const res = await fetch(`${API_URL}/logout`, {
+                await fetch(`${API_URL}/logout`, {
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${token}`,
                         "Content-Type": "application/json",
                     },
                 });
-                if (!res.ok) {
-                    const errorData = await res.json().catch(() => ({}));
-                    throw new Error(errorData.error || 'Logout failed');
-                }
-                console.log('[AuthContext] Backend logout successful.');
             }
-            setUser(null);
-            setToken(null);
-            localStorage.removeItem("auth_user");
-            localStorage.removeItem("auth_token");
-            console.log('[AuthContext] LocalStorage cleared.');
         } catch (error) {
-            console.error('[AuthContext] Logout error:', error instanceof Error ? error.message : 'Unknown error');
+            console.error('[AuthContext] Logout API error:', error);
+        } finally {
             setUser(null);
             setToken(null);
             localStorage.removeItem("auth_user");
             localStorage.removeItem("auth_token");
-        } finally {
             setLoading(false);
         }
     };
