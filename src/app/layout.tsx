@@ -20,7 +20,10 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en" suppressHydrationWarning>
-        <body className={inter.className}>
+        <body className={inter.className}
+            // <-- **Add the attribute on the server** (it will be ignored on client)
+              cz-shortcut-listen="true">
+
         <AuthProvider>
             <main>{children}</main>
         </AuthProvider>
