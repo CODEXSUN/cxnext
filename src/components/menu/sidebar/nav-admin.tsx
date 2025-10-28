@@ -7,7 +7,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
     SidebarGroup,
-    SidebarGroupContent,
+    SidebarGroupContent, SidebarGroupLabel,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
@@ -36,6 +36,7 @@ export function NavAdmin({
     return (
         <SidebarGroup>
             <SidebarGroupContent className="flex flex-col gap-2">
+                <SidebarGroupLabel>Admin</SidebarGroupLabel>
                 <SidebarMenu>
                     {items.map((item) => {
                         const isActive = pathname === item.url;

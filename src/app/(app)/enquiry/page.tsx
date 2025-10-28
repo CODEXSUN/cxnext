@@ -25,26 +25,47 @@ import { DataTableColumnHeader } from '@/components/table/data-table-column-head
 import { IconEye } from '@tabler/icons-react';
 import { Toaster } from '@/components/ui/sonner';
 import { useDebounce } from '@/hooks/use-debounce';
-import {API_URL} from "@/config";
-import {useRouter} from "next/navigation";
+import { API_URL } from '@/config';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/global/auth/useAuth';   // <-- Hook stays here
 
 const queryClient = new QueryClient();
 
-// ---------------------------------------------------------------------
-// 1. Embedded API – GET (list) + POST (create)
-// ---------------------------------------------------------------------
-async function getEnquiries(params: any) {
-    const res = await fetch(`${API_URL}/enquiries?${new URLSearchParams(params).toString()}`, {
+/* ------------------------------------------------------------------
+   1. API – GET (list) – **NO HOOKS** – pure function
+   ------------------------------------------------------------------ */
+async function fetchEnquiriesRaw(
+    params: Record<string, any>,
+    authHeaders: Record<string, string>
+) {
+    const url = `${API_URL}/enquiries?${new URLSearchParams(params).toString()}`;
+
+    const res = await fetch(url, {
+        method: 'GET',
+        headers: {
+            ...authHeaders,
+            Accept: 'application/json',
+        },
+        credentials: 'include',
         cache: 'no-store',
     });
-    if (!res.ok) throw new Error('Failed to fetch');
-    return res.json();
+
+    const contentType = res.headers.get('content-type') ?? '';
+    if (!contentType.includes('application/json')) {
+        const text = await res.text();
+        console.error('[fetchEnquiriesRaw] Non-JSON response:', text);
+        throw new Error('Received HTML – check auth / CORS');
+    }
+
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.message ?? 'Failed to fetch');
+
+    return json;   // { data: [...], meta: { … } }
 }
 
-
-// ---------------------------------------------------------------------
-// 2. Table columns
-// ---------------------------------------------------------------------
+/* ------------------------------------------------------------------
+   2. Table columns (unchanged)
+   ------------------------------------------------------------------ */
 interface Enquiry {
     id: number;
     contact: {
@@ -109,7 +130,11 @@ const columns: ColumnDef<Enquiry>[] = [
     {
         id: 'actions',
         cell: ({ row }) => (
-            <Button variant="ghost" size="icon" onClick={() => alert(`View #${row.original.id}`)}>
+            <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => alert(`View #${row.original.id}`)}
+            >
                 <IconEye className="h-4 w-4" />
                 <span className="sr-only">View</span>
             </Button>
@@ -117,10 +142,11 @@ const columns: ColumnDef<Enquiry>[] = [
     },
 ];
 
-// ---------------------------------------------------------------------
-// 3. List component
-// ---------------------------------------------------------------------
+/* ------------------------------------------------------------------
+   3. List component – **hooks are allowed here**
+   ------------------------------------------------------------------ */
 function EnquiryListPageContent() {
+    const { headers } = useAuth();                     // <-- Hook is safe
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [globalFilter, setGlobalFilter] = useState('');
@@ -144,7 +170,7 @@ function EnquiryListPageContent() {
     const fetchEnquiries = async () => {
         const sortBy = sorting[0]?.id || 'id';
         const sortDir = sorting[0]?.desc ? 'desc' : 'asc';
-        const params: any = {
+        const params: Record<string, any> = {
             search: debouncedGlobalFilter,
             sort_by: sortBy,
             sort_dir: sortDir,
@@ -154,7 +180,8 @@ function EnquiryListPageContent() {
         columnFilters.forEach((f) => {
             params[`filter[${f.id}]`] = f.value;
         });
-        return getEnquiries(params);
+
+        return fetchEnquiriesRaw(params, headers());   // <-- pass headers
     };
 
     const { data, isLoading, isFetching, error } = useQuery({
@@ -163,8 +190,8 @@ function EnquiryListPageContent() {
         keepPreviousData: true,
     });
 
-    const enquiries = useMemo(() => data?.data || [], [data]);
-    const pageCount = useMemo(() => data?.meta?.last_page || 0, [data]);
+    const enquiries = useMemo(() => data?.data ?? [], [data]);
+    const pageCount = useMemo(() => data?.meta?.last_page ?? 0, [data]);
 
     const table = useReactTable({
         data: enquiries,
@@ -192,9 +219,6 @@ function EnquiryListPageContent() {
         getFacetedUniqueValues: getFacetedUniqueValues(),
     });
 
-    // -----------------------------------------------------------------
-    // 4. Create handler (used by the "Add" button → redirect)
-    // -----------------------------------------------------------------
     if (isLoading) return <Loader />;
     if (error) return <p className="text-red-600">Error: {(error as any).message}</p>;
 
@@ -219,9 +243,9 @@ function EnquiryListPageContent() {
     );
 }
 
-// ---------------------------------------------------------------------
-// 5. Page wrapper
-// ---------------------------------------------------------------------
+/* ------------------------------------------------------------------
+   4. Page wrapper
+   ------------------------------------------------------------------ */
 export default function EnquiryListPage() {
     return (
         <QueryClientProvider client={queryClient}>

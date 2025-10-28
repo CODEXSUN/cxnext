@@ -23,6 +23,7 @@ export interface AuthContextType {
     loading: boolean;
     login: (email: string, password: string) => Promise<boolean>;
     logout: () => Promise<void>;
+    setUser: (user: User | null) => void;
 }
 
 export const AuthContext = React.createContext<AuthContextType | null>(null);

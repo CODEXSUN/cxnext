@@ -1,22 +1,23 @@
 // app/enquiry/page.tsx
 'use client';
 
-import React, {useState, useEffect} from 'react';
-import {useForm} from 'react-hook-form';
-import {zodResolver} from '@hookform/resolvers/zod';
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import {toast} from 'sonner';
-import {useRouter} from 'next/navigation';
-import {API_URL} from "@/config";
-import {DialogFooter} from "@/components/ui/dialog";
-import {Button} from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
+import { API_URL } from '@/config';
+import { DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { useAuth } from '@/global/auth/useAuth';   // <-- NEW: token
 
 const enquirySchema = z.object({
     name: z.string().min(2, 'Name is required'),
     phone: z.string().regex(/^\+?\d{10}$/, 'Valid 10-digit phone number required'),
-    email: z.email().optional().or(z.literal('')),
+    email: z.string().email().optional().or(z.literal('')),
     company_name: z.string().optional(),
     query: z.string().min(10, 'Query too short'),
     contact_type: z.enum(['customer', 'supplier', 'both']),
@@ -27,13 +28,14 @@ type EnquiryFormData = z.infer<typeof enquirySchema>;
 
 export default function EnquiryCreatePage() {
     const router = useRouter();
+    const { headers } = useAuth();                     // <-- token + tenant
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [contactFound, setContactFound] = useState<any>(null);
 
     const {
         register,
         handleSubmit,
-        formState: {errors},
+        formState: { errors },
         watch,
         setValue,
         reset,
@@ -47,30 +49,41 @@ export default function EnquiryCreatePage() {
 
     const phone = watch('phone');
 
-    // Auto-lookup contact by phone
+// Auto-lookup contact by phone
     useEffect(() => {
         if (phone && phone.length >= 10) {
             const timer = setTimeout(async () => {
                 try {
-
-                    const res = await fetch(`${API_URL}/contacts/lookup?phone=${encodeURIComponent(phone)}`, {
-                        cache: 'no-store',
-                    });
-
-                    if (res.ok) {
-                        const {contact} = await res.json();
-                        if (contact) {
-                            setContactFound(contact);
-                            setValue('name', contact.name);
-                            setValue('email', contact.email || '');
-                            setValue('contact_type', contact.contact_type);
-                            toast.success('Contact found! Details auto-filled.');
-                        } else {
-                            setContactFound(null);
+                    const res = await fetch(
+                        `${API_URL}/contacts/lookup?phone=${encodeURIComponent(phone)}`,
+                        {
+                            headers: headers(),          // ← SENDS Bearer token
+                            cache: 'no-store',
                         }
+                    );
+
+                    // ── DEBUG: Log raw response if not JSON ──
+                    const contentType = res.headers.get('content-type') ?? '';
+                    if (!contentType.includes('application/json')) {
+                        const text = await res.text();
+                        console.error('[lookup] Non-JSON response:', text);
+                        toast.error('Contact lookup failed – check login');
+                        return;
+                    }
+
+                    const { contact } = await res.json();
+                    if (contact) {
+                        setContactFound(contact);
+                        setValue('name', contact.name);
+                        setValue('email', contact.email || '');
+                        setValue('contact_type', contact.contact_type);
+                        toast.success('Contact found! Details auto-filled.');
+                    } else {
+                        setContactFound(null);
                     }
                 } catch (err) {
                     console.error('Lookup failed:', err);
+                    toast.error('Network error');
                 }
             }, 600);
 
@@ -78,14 +91,17 @@ export default function EnquiryCreatePage() {
         } else {
             setContactFound(null);
         }
-    }, [phone, setValue]);
+    }, [phone, setValue, headers]);   // ← headers() is reactive
 
     const onSubmit = async (data: EnquiryFormData) => {
         setIsSubmitting(true);
         try {
             const res = await fetch(`${API_URL}/enquiries`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...headers(),                 // <-- Bearer + x-tenant-id + x-user-id
+                },
                 body: JSON.stringify(data),
             });
 
@@ -94,7 +110,7 @@ export default function EnquiryCreatePage() {
             if (res.ok) {
                 toast.success('Enquiry submitted successfully!');
                 if (result.portal) toast.info(result.portal.message);
-                reset();
+                reset();                        // <-- clear form
                 setContactFound(null);
                 router.push('/enquiry');
             } else {
@@ -108,13 +124,14 @@ export default function EnquiryCreatePage() {
     };
 
     return (
-        <div className="max-w-2xl mx-auto p-6 bg-white border border-accent rounded-lg shadow-md mt-10">
-            <h1 className="text-2xl font-bold mb-6">Submit Enquiry</h1>
+        <div className="max-w-2xl mx-auto p-6 space-y-6">
+            <h1 className="text-2xl font-bold">Create New Enquiry</h1>
 
             {contactFound && (
                 <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded">
                     <p className="text-sm text-green-800">
-                        <strong>Contact Found:</strong> {contactFound.name} ({contactFound.contact_code})
+                        <strong>Contact Found:</strong> {contactFound.name} (
+                        {contactFound.contact_code})
                         {contactFound.has_account && ' | Account Active'}
                     </p>
                 </div>
@@ -127,7 +144,7 @@ export default function EnquiryCreatePage() {
                         {...register('phone')}
                         type="tel"
                         className="w-full px-3 py-2 border rounded-md"
-                        placeholder=""
+                        placeholder="+911234567890"
                     />
                     {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
                 </div>
@@ -164,7 +181,10 @@ export default function EnquiryCreatePage() {
 
                 <div>
                     <label className="block text-sm font-medium mb-1">Contact Type</label>
-                    <select {...register('contact_type')} className="w-full px-3 py-2 border rounded-md">
+                    <select
+                        {...register('contact_type')}
+                        className="w-full px-3 py-2 border rounded-md"
+                    >
                         <option value="customer">Customer</option>
                         <option value="supplier">Supplier</option>
                         <option value="both">Both</option>
@@ -183,16 +203,17 @@ export default function EnquiryCreatePage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <Checkbox id="grant_access"  {...register('grant_portal_access')}/>
-                    <Label htmlFor="grant_access">Grant portal access (sends login link to email)</Label>
+                    <Checkbox id="grant_access" {...register('grant_portal_access')} />
+                    <Label htmlFor="grant_access">
+                        Grant portal access (sends login link to email)
+                    </Label>
                 </div>
 
                 <DialogFooter>
-                    <Button type='submit' form='user-form' disabled={isSubmitting}>
+                    <Button type="submit" disabled={isSubmitting}>
                         {isSubmitting ? 'Saving...' : 'Save Enquiry'}
                     </Button>
                 </DialogFooter>
-
             </form>
         </div>
     );
